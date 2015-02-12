@@ -1,0 +1,18 @@
+[ng\:cloak],
+[ng-cloak],
+[data-ng-cloak],
+[x-ng-cloak],
+.ng-cloak,
+.x-ng-cloak {
+  display: none !important;
+}
+
+.content {
+    background: #777;
+    padding: 10px;
+}
+.content >*{
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
