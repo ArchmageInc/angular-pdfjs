@@ -16,19 +16,22 @@
                     canvasContext,
                     currentPage,
                     pdfDocument,
-                    cState,
-                    fState,
-                    vState,
                     loading,
                     zoomSpeed    = 0.25,
                     panSpeed     = 10,
                     rotateSpeed  = 90,
                     pageCount    = 0,
+                    oState       = {},
+                    cState       = {},
+                    fState       = {},
+                    vState       = {
+                        offset: {}
+                    },
                     defer        = $q.defer(),
                     emptyPromise = defer.promise;
 
                 function clearState() {
-                    cState = {
+                    angular.extend(cState, {
                         page:     0,
                         rotation: 0,
                         offsetX:  0,
@@ -36,10 +39,11 @@
                         scale:    1,
                         width:    0,
                         height:   0
-                    },
-                    fState  = angular.extend({}, cState, {page: 1}),
-                    vState  = angular.extend(fState);
-                    loading = null;
+                    });
+                    angular.extend(fState, cState, {page: 1});
+                    angular.extend(vState, fState);
+                    loading         = null;
+                    oState.viewport = null;
                 }
 
                 defer.resolve();
@@ -54,20 +58,37 @@
                 function resetState() {
                     loading = null;
                     angular.extend(cState, fState);
-                    angular.extend(vState, cState);
+                    angular.extend(vState, fState);
                     $scope.$applyAsync();
                 }
 
                 function renderPage() {
                     if (okToRender()) {
                         loading = pdfDocument.getPage(fState.page).then(function (_page) {
-                            var viewport          = _page.getViewport(fState.scale);
-                            canvasElement.width   = viewport.width;
-                            canvasElement.height  = viewport.height;
-                            fState.width          = viewport.width;
-                            fState.height         = viewport.height;
+                            var viewport,
+                                viewBox,
+                                width,
+                                height;
+
+                            viewport              = _page.getViewport(1);
+                            angular.extend(oState, {
+                                page: 1,
+                                rotation: viewport.rotation,
+                                offsetX: viewport.offsetX,
+                                offsetY: viewport.offsetY,
+                                scale: viewport.scale,
+                                width: viewport.width,
+                                height: viewport.height
+                            }, oState);
+                            width                 = fState.rotation % 180 ? oState.height : oState.width;
+                            height                = fState.rotation % 180 ? oState.width : oState.height;
+                            fState.width          = fState.width || width;
+                            fState.height         = fState.height || height;
+                            canvasElement.width   = fState.rotation % 180 ? fState.height : fState.width;
+                            canvasElement.height  = fState.rotation % 180 ? fState.width : fState.height;
+                            viewBox               = [0, 0, width, height];
                             currentPage           = _page;
-                            viewport              = new PDFJS.PageViewport(viewport.viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
+                            viewport              = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
 
                             _page.render({
                                 canvasContext: canvasContext,
@@ -98,6 +119,26 @@
                     return emptyPromise;
                 }
 
+                function setWidth(width) {
+                    vState.width = width;
+                    width        = parseFloat(width);
+                    if (!isNaN(width)) {
+                        fState.width = width;
+                        return renderPage();
+                    }
+                    return emptyPromise;
+                }
+                function setHeight(height) {
+                    vState.height = height;
+                    height        = parseFloat(height);
+                    if (!isNaN(height)) {
+                        fState.height = height;
+                        return renderPage();
+                    }
+                    return emptyPromise;
+                }
+
+
                 function setZoomSpeed(speed) {
                     speed = parseFloat(speed);
                     if (!isNaN(speed) && speed > 0) {
@@ -115,7 +156,7 @@
                 function zoomTo(scale) {
                     vState.scale = scale;
                     scale        = parseFloat(scale);
-                    if (!isNaN(scale)) {
+                    if (!isNaN(scale) && scale > 0) {
                         fState.scale = scale;
                         return renderPage();
                     }
@@ -145,18 +186,40 @@
                     return panTo(cState.offsetX, cState.offsetY - speed);
                 }
                 function panTo(x, y) {
+                    x   = x > 0 ? 0 : x;
+                    x   = x < -cState.width ? -cState.width : x;
+                    y   = y > 0 ? 0 : y;
+                    y   = y < -cState.height ? -cState.height : y;
+
                     vState.offsetX = x;
                     vState.offsetY = y;
-                    x              = parseFloat(x);
-                    y              = parseFloat(y);
+
+                    x   = parseFloat(x);
+                    y   = parseFloat(y);
                     if (!isNaN(x) && !isNaN(y)) {
-                        x = Math.min(0, Math.max(-cState.width, x));
-                        y = Math.min(0, Math.max(-cState.height, y));
                         fState.offsetX = x;
                         fState.offsetY = y;
                         return renderPage();
                     }
                     return emptyPromise;
+                }
+                function setOffsetX(offsetX) {
+                    vState.offsetX = offsetX;
+                    return setOffset({
+                        x: offsetX,
+                        y: vState.offsetY
+                    });
+                }
+                function setOffsetY(offsetY) {
+                    vState.offsetY = offsetY;
+                    return setOffset({
+                        x: vState.offsetX,
+                        y: offsetY
+                    });
+                }
+                function setOffset(offset) {
+                    offset = offset || {};
+                    return panTo(offset.x, offset.y);
                 }
 
                 function rotateLeft() {
@@ -202,9 +265,28 @@
                 function getDocument() {
                     return pdfDocument;
                 }
-
-
+                Object.defineProperties(vState.offset, {
+                    x: {
+                        set: setOffsetX,
+                        get: function () {
+                            return vState.offsetX;
+                        }
+                    },
+                    y: {
+                        set: setOffsetY,
+                        get: function () {
+                            return vState.offsetY;
+                        }
+                    }
+                });
                 Object.defineProperties(this, {
+                    setHeight: {
+                        value: setHeight
+                    },
+                    setWidth: {
+                        value: setWidth
+                    },
+
                     setZoomSpeed: {
                         value: setZoomSpeed
                     },
@@ -277,54 +359,54 @@
                         }
                     },
                     page: {
-                        set: function (value) {
-                            goToPage(value);
-                        },
+                        set: goToPage,
                         get: function () {
                             return vState.page;
                         }
                     },
+                    width: {
+                        set: setWidth,
+                        get: function () {
+                            return vState.width;
+                        }
+                    },
+                    height: {
+                        set: setHeight,
+                        get: function () {
+                            return vState.height;
+                        }
+                    },
                     zoom: {
-                        set: function (value) {
-                            zoomTo(value);
-                        },
+                        set: zoomTo,
                         get: function () {
                             return vState.scale;
                         }
                     },
                     rotation: {
-                        set: function (value) {
-                            rotateTo(value);
-                        },
+                        set: rotateTo,
                         get: function () {
                             return vState.rotation;
                         }
                     },
+                    offsetX: {
+                        set: panLeft,
+                        get: function () {
+                            return vState.offsetX;
+                        }
+                    },
+                    offsetY: {
+                        set: panUp,
+                        get: function () {
+                            return vState.offsetY;
+                        }
+                    },
                     offset: {
-                        set: function (value) {
-                            if (value && value.x !== undefined && value.y !== undefined) {
-                                panTo(value.x, value.y);
-                            }
-                        },
+                        set: setOffset,
                         get: function () {
-                            return {
-                                x: vState.offsetX,
-                                y: vState.offsetY
-                            };
+                            return vState.offset;
                         }
                     },
-                    width: {
-                        set: angular.noop,
-                        get: function () {
-                            return cState.width;
-                        }
-                    },
-                    height: {
-                        set: angular.noop,
-                        get: function () {
-                            return cState.height;
-                        }
-                    },
+                    
                     loading: {
                         set: angular.noop,
                         get: function () {

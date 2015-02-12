@@ -79,7 +79,7 @@
                         <div class="col-sm-3">
                             <div class="row">
                                 <label class="col-sm-2">Page:</label>
-                                <input type="number" ng-model="myViewer.page" class="col-sm-4" />
+                                <input type="number" min="1" max="{{myViewer.total}}" ng-model="myViewer.page" class="col-sm-4" />
                             </div>
                             <div class="row">
                                 <label class="col-sm-2">Total:</label>
@@ -87,16 +87,16 @@
                             </div>
                             <div class="row">
                                 <label class="col-sm-2">Zoom:</label>
-                                <input type="number" ng-model="myViewer.zoom" class="col-sm-4" />
+                                <input type="number" min="0" ng-model="myViewer.zoom" class="col-sm-4" />
                             </div>
                             <div class="row">
                                 <label class="col-sm-2">Offset:</label>
-                                <input type="number" min="0" ng-model="myViewer.offset.x" class="col-sm-2" />
-                                <input type="text" min="0" ng-model="myViewer.offset.y" class="col-sm-2" />
+                                <input type="number" min="-{{myViewer.width}}" max="0" ng-model="myViewer.offset.x" class="col-sm-2" />
+                                <input type="number" min="-{[myViewer.height}}" max="0" ng-model="myViewer.offset.y" class="col-sm-2" />
                             </div>
                             <div class="row">
                                 <label class="col-sm-2">Rotation:</label>
-                                <input type="number" min="0" ng-model="myViewer.rotation" class="col-sm-4" />
+                                <input type="number" min="0" max="360" step="90" ng-model="myViewer.rotation" class="col-sm-4" />
                             </div>
                             <div class="row">
                                 <label class="col-sm-2">Width:</label>
