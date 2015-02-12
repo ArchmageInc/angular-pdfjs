@@ -16,3 +16,8 @@
     margin-left: auto;
     margin-right: auto;
 }
+.controls >* {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 2px 1em;
+}

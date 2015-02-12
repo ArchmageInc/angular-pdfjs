@@ -31,18 +31,19 @@
                     </ul>
                 </div>
                 <div class="col-sm-10">
-                    <div class="row">
-                        <div class="col-sm-7">
-                            <button class="btn btn-primary fa fa-rotate-left" ng-click="myViewer.rotateLeft()"></button>
-                            <button class="btn btn-primary fa fa-rotate-right" ng-click="myViewer.rotateRight()"></button>
-                            <button class="btn btn-primary fa fa-search-plus" ng-click="myViewer.zoomIn()"></button>
-                            <button class="btn btn-primary fa fa-search-minus" ng-click="myViewer.zoomOut()"></button>
-                            <button class="btn btn-primary fa fa-circle fa-inverse" ng-click="myViewer.zoomTo(1)"></button>
-                            <button class="btn btn-primary fa fa-arrow-left" ng-click="myViewer.previousPage()"></button>
-                            <button class="btn btn-primary fa fa-arrow-right" ng-click="myViewer.nextPage()"></button>
-                            <input type="number" ng-model="myViewer.page" min="1" max="{{myViewer.total}}" /> / {{myViewer.total}}
-                        </div>
-                        <div class="col-sm-5">
+                    <div class="controls">
+                        <span>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-search-plus" ng-click="myViewer.zoomIn()"></button>
+                            </p>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-circle fa-inverse" ng-click="myViewer.zoomTo(1)"></button>
+                            </p>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-search-minus" ng-click="myViewer.zoomOut()"></button>
+                            </p>
+                        </span>
+                        <span>
                             <p class="text-center">
                                 <button class="btn btn-primary fa fa-arrow-up" ng-click="myViewer.panUp(200)"></button>
                             </p>
@@ -54,7 +55,16 @@
                             <p class="text-center">
                                 <button class="btn btn-primary fa fa-arrow-down" ng-click="myViewer.panDown(200)"></button>
                             </p>
-                        </div>
+                        </span>
+                    </div>
+                    <div class="controls">
+                        <span>
+                            <button class="btn btn-primary fa fa-rotate-left" ng-click="myViewer.rotateLeft()"></button>
+                            <button class="btn btn-primary fa fa-rotate-right" ng-click="myViewer.rotateRight()"></button>
+                            <button class="btn btn-primary fa fa-arrow-left" ng-click="myViewer.previousPage()"></button>
+                            <button class="btn btn-primary fa fa-arrow-right" ng-click="myViewer.nextPage()"></button>
+                            <input type="number" ng-model="myViewer.page" min="1" max="{{myViewer.total}}" /> / {{myViewer.total}}
+                        </span>
                     </div>
                     <div class="row">
                         
