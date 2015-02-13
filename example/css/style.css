@@ -7,9 +7,9 @@
   display: none !important;
 }
 
-.content {
-    background: #777;
-    padding: 10px;
+.content div{
+    background: #EFEFEF;
+    border: 1em solid #777;
 }
 .content >*{
     display: block;

@@ -8,11 +8,12 @@
     .run(function () {
         PDFJS.verbosity = PDFJS.VERBOSITY_LEVELS.errors;
     })
-    .directive('pdfViewer', function () {
+    .directive('pdfViewer', ["$parse", function ($parse) {
         return {
             restrict: 'A',
             controller: ["$scope", "$q", function ($scope, $q) {
-                var canvasElement,
+                var containerElement,
+                    canvasElement,
                     canvasContext,
                     currentPage,
                     pdfDocument,
@@ -45,51 +46,52 @@
                     loading         = null;
                     oState.viewport = null;
                 }
-
-                defer.resolve();
-                clearState();
+                
+                function resetState() {
+                    loading = null;
+                    angular.extend(cState, fState);
+                    angular.extend(vState, cState);
+                    $scope.$applyAsync();
+                }
 
                 function okToRender() {
                     return pdfDocument &&
                            canvasContext &&
+                           !loading &&
                            !angular.equals(cState, fState);
                 }
 
-                function resetState() {
-                    loading = null;
-                    angular.extend(cState, fState);
-                    angular.extend(vState, fState);
-                    $scope.$applyAsync();
+                function oStateInitialize(viewport) {
+                    angular.extend(oState, {
+                        page: 1,
+                        rotation: viewport.rotation,
+                        offsetX:  viewport.offsetX,
+                        offsetY:  viewport.offsetY,
+                        scale:    viewport.scale,
+                        width:    viewport.width,
+                        height:   viewport.height
+                    }, oState);
+                    fState.width  = fState.width || oState.width;
+                    fState.height = fState.height || oState.height;
                 }
 
                 function renderPage() {
                     if (okToRender()) {
                         loading = pdfDocument.getPage(fState.page).then(function (_page) {
-                            var viewport,
+                            var width,
+                                height,
                                 viewBox,
-                                width,
-                                height;
+                                viewport;
 
-                            viewport              = _page.getViewport(1);
-                            angular.extend(oState, {
-                                page: 1,
-                                rotation: viewport.rotation,
-                                offsetX: viewport.offsetX,
-                                offsetY: viewport.offsetY,
-                                scale: viewport.scale,
-                                width: viewport.width,
-                                height: viewport.height
-                            }, oState);
-                            width                 = fState.rotation % 180 ? oState.height : oState.width;
-                            height                = fState.rotation % 180 ? oState.width : oState.height;
-                            fState.width          = fState.width || width;
-                            fState.height         = fState.height || height;
-                            canvasElement.width   = fState.rotation % 180 ? fState.height : fState.width;
-                            canvasElement.height  = fState.rotation % 180 ? fState.width : fState.height;
-                            viewBox               = [0, 0, width, height];
-                            currentPage           = _page;
-                            viewport              = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
+                            oStateInitialize(_page.getViewport(1));
 
+                            currentPage = _page;
+                            width       = fState.rotation % 180 ? oState.height : oState.width;
+                            height      = fState.rotation % 180 ? oState.width : oState.height;
+                            viewBox     = [0, 0, width, height];
+                            viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
+
+                            setContainerSize();
                             _page.render({
                                 canvasContext: canvasContext,
                                 viewport: viewport
@@ -100,6 +102,18 @@
                     }
                     return emptyPromise;
                 }
+
+                function setContainerSize() {
+                    var width  = fState.rotation % 180 ? fState.height : fState.width;
+                    var height = fState.rotation % 180 ? fState.width : fState.height;
+                    containerElement.css({
+                        width: width + 'px',
+                        height: height + 'px'
+                    });
+                    canvasElement.attr('width', width);
+                    canvasElement.attr('height', height);
+                }
+
 
                 function previousPage() {
                     return goToPage(cState.page - 1);
@@ -138,13 +152,6 @@
                     return emptyPromise;
                 }
 
-
-                function setZoomSpeed(speed) {
-                    speed = parseFloat(speed);
-                    if (!isNaN(speed) && speed > 0) {
-                        zoomSpeed = speed;
-                    }
-                }
                 function zoomIn(speed) {
                     speed = isNaN(parseFloat(speed)) ? zoomSpeed : parseFloat(speed);
                     return zoomTo(cState.scale + speed);
@@ -163,12 +170,6 @@
                     return emptyPromise;
                 }
 
-                function setPanSpeed(speed) {
-                    speed = parseFloat(speed);
-                    if (!isNaN(speed) && speed > 0) {
-                        panSpeed = speed;
-                    }
-                }
                 function panLeft(speed) {
                     speed = isNaN(parseFloat(speed)) ? panSpeed : parseFloat(speed);
                     return panTo(cState.offsetX + speed, cState.offsetY);
@@ -186,11 +187,16 @@
                     return panTo(cState.offsetX, cState.offsetY - speed);
                 }
                 function panTo(x, y) {
+                    var width = cState.rotation % 180 ? cState.height : cState.width;
+                    var height = cState.rotation % 180 ? cState.width : cState.height;
+                    var minX = width - (cState.scale * width);
+                    var minY = height - (cState.scale * height);
+                    
+                    x   = x < minX ? minX : x;
                     x   = x > 0 ? 0 : x;
-                    x   = x < -cState.width ? -cState.width : x;
+                    y   = y < minY ? minY : y;
                     y   = y > 0 ? 0 : y;
-                    y   = y < -cState.height ? -cState.height : y;
-
+                    
                     vState.offsetX = x;
                     vState.offsetY = y;
 
@@ -251,20 +257,16 @@
                     return emptyPromise;
                 }
 
-                
-
-                function setCanvas(element) {
-                    canvasElement = element;
-                    canvasContext = canvasElement.getContext('2d');
-                }
-
-                function getCanvas() {
-                    return canvasElement;
+                function setElements(container, element) {
+                    containerElement = container;
+                    canvasElement    = element;
+                    canvasContext    = canvasElement[0].getContext('2d');
                 }
 
                 function getDocument() {
                     return pdfDocument;
                 }
+
                 Object.defineProperties(vState.offset, {
                     x: {
                         set: setOffsetX,
@@ -287,9 +289,6 @@
                         value: setWidth
                     },
 
-                    setZoomSpeed: {
-                        value: setZoomSpeed
-                    },
                     zoomIn: {
                         value: zoomIn
                     },
@@ -300,9 +299,6 @@
                         value: zoomTo
                     },
                     
-                    setPanSpeed: {
-                        value: setPanSpeed
-                    },
                     panLeft: {
                         value: panLeft
                     },
@@ -342,11 +338,8 @@
                     loadDocument: {
                         value: loadDocument
                     },
-                    setCanvas: {
-                        value: setCanvas
-                    },
-                    getCanvas: {
-                        value: getCanvas
+                    setElements: {
+                        value: setElements
                     },
                     getDocument: {
                         value: getDocument
@@ -414,25 +407,85 @@
                         }
                     }
                 });
+                defer.resolve();
+                clearState();
             }],
             link: function ($scope, el, attrs, ctrl) {
-                $scope.$watch(attrs.pdfUrl, function (url) {
-                    if (url) {
-                        ctrl.loadDocument(url);
-                    }
+                var moveState = null,
+                    canvas    = angular.element('<canvas></canvas>'),
+                    container = angular.element('<div></div>'),
+                    options   = angular.extend({}, $parse(attrs.pdfViewer)($scope), {
+                        mouseZoom: true,
+                        mousePan:  true
+                    }),
+                    offset = {
+                        x: 0,
+                        y: 0
+                    };
+
+                ctrl.setElements(container, canvas);
+
+                container.append(canvas);
+                el.append(container);
+                container.css({
+                    overflow: 'hidden'
                 });
 
                 if (attrs.id) {
                     $scope[attrs.$normalize(attrs.id)] = ctrl;
                 }
 
-                var canvas = angular.element('<canvas></canvas>');
-                ctrl.setCanvas(canvas[0]);
-                el.append(canvas);
-                el.css({
-                    overflow: 'hidden'
+                function linkUrl(url) {
+                    ctrl.loadDocument(url);
+                }
+
+                function mouseWheel(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+                    var dy = event.deltaY = -1 / 40 * event.wheelDelta;
+                    ctrl.zoomIn(dy / 100);
+                }
+                function moveStart(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    moveState = {
+                        x: event.x - offset.x,
+                        y: event.y - offset.y
+                    };
+                }
+                function moveEnd(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    moveState = null;
+                }
+                function move(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    if (moveState) {
+                        ctrl.offset = offset = {
+                            x: event.x - moveState.x,
+                            y: event.y - moveState.y
+                        };
+                    }
+                }
+                if (options.mouseZoom) {
+                    container.on('wheel', mouseWheel);
+                }
+                if (options.mousePan) {
+                    canvas.css({
+                        cursor: 'move'
+                    });
+                    container.on('touchstart mousedown', moveStart);
+                    container.on('touchmove mousemove', move);
+                    container.on('touchend touchleave touchcancel mouseup mouseleave', moveEnd);
+                }
+                $scope.$on('$destroy', function () {
+                    container.off();
                 });
+
+                $scope.$watch(attrs.pdfUrl, linkUrl);
             }
         };
-    });
+    }]);
 }(Object, Math, PDFJS, angular));
