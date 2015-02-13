@@ -1,0 +1,23 @@
+{
+    "preset": "crockford",
+    "requireSpaceAfterKeywords": [
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "switch",
+        "case",
+        "return",
+        "try",
+        "catch",
+        "typeof"
+    ],
+    "requireSpacesInAnonymousFunctionExpression": {
+        "beforeOpeningRoundBrace": true
+    },
+    "requireMultipleVarDecl":       null,
+    "disallowDanglingUnderscores":  null,
+    "disallowTrailingWhitespace":   null,
+    "maxErrors": 10
+}

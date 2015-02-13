@@ -1,0 +1,29 @@
+{
+  "name": "angular-pdfjs",
+  "description": "An angular directive wrapper for PDFJS",
+  "license": "MIT",
+  "homepage": "https://github.com/ArchmageInc/angular-pdfjs",
+  "private": false,
+  "version": "0.0.3",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ArchmageInc/angular-pdfjs.git"
+  },
+  "main": [
+    "./dist/angular-pdfjs.min.js",
+    "./dist/angular-pdfjs.min.js.map"
+  ],
+  "dependencies": {
+    "angular": "~1.3.7",
+    "pdfjs-dist": "~1.0.1137"
+  },
+  "overrides": {
+      "pdfjs-dist": {
+        "main": [
+          "web/compatibility.js",
+          "build/pdf.js",
+          "build/pdf.worker.js"
+        ]
+      }
+  }
+}

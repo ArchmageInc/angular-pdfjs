@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html ng-app="exampleApp">
+    <head lang="en">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title page-title>Angular-PDFJS Example</title>
+        <link rel="stylesheet" href="css/bootstrap.css" />
+        <link rel="stylesheet" href="css/font-awesome.css" />
+        <link rel="stylesheet" href="css/style.css"/>
+    </head>
+    <body ng-cloak>
+        <header class="container">
+            <h1>Example PDF Viewer</h1>
+            <p>
+                This is an example of using the pdf-viewer directive from the angular-pdfjs library to view PDFs rendered
+                using PDFJS inside of an angular application.
+            </p>
+        </header>
+        
+        <div ng-controller="exampleCtrl" class="container-fluid" >
+            <div class="row">
+                <div class="col-sm-2">
+                    <h3>
+                        Select PDF
+                    </h3>
+                    <ul class="list-unstyled">
+                        <li ng-repeat="file in pdfFiles" >
+                            <button class="btn btn-default fa fa-file-pdf-o" ng-click="myViewer.loadDocument(file.url)">
+                                {{file.name}}
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-sm-10">
+                    <div class="controls">
+                        <span>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-search-plus" ng-click="myViewer.zoomIn()"></button>
+                            </p>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-circle fa-inverse" ng-click="myViewer.zoomTo(1)"></button>
+                            </p>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-search-minus" ng-click="myViewer.zoomOut()"></button>
+                            </p>
+                        </span>
+                        <span>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-arrow-up" ng-click="myViewer.panUp(200)"></button>
+                            </p>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-arrow-left" ng-click="myViewer.panLeft(200)"></button>
+                                <button class="btn btn-primary fa fa-circle-o" ng-click="myViewer.panTo(0,0)"></button>
+                                <button class="btn btn-primary fa fa-arrow-right" ng-click="myViewer.panRight(200)"></button>
+                            </p>
+                            <p class="text-center">
+                                <button class="btn btn-primary fa fa-arrow-down" ng-click="myViewer.panDown(200)"></button>
+                            </p>
+                        </span>
+                    </div>
+                    <div class="controls">
+                        <span>
+                            <button class="btn btn-primary fa fa-rotate-left" ng-click="myViewer.rotateLeft()"></button>
+                            <button class="btn btn-primary fa fa-rotate-right" ng-click="myViewer.rotateRight()"></button>
+                            <button class="btn btn-primary fa fa-arrow-left" ng-click="myViewer.previousPage()"></button>
+                            <button class="btn btn-primary fa fa-arrow-right" ng-click="myViewer.nextPage()"></button>
+                            <input type="number" ng-model="myViewer.page" min="1" max="{{myViewer.total}}" /> / {{myViewer.total}}
+                        </span>
+                    </div>
+                    <div class="row">
+                        
+                        
+                        <!---------------------------THE PDF VIEWER DIRECTIVE------------------------->
+                        
+                        <div pdf-viewer pdf-url="pdfUrl" id="my-viewer" class="col-sm-9 content"></div>
+                        
+                        <!---------------------------THE PDF VIEWER DIRECTIVE------------------------->
+                        
+                        
+                        <div class="col-sm-3">
+                            <div class="row">
+                                <label class="col-sm-2">Page:</label>
+                                <input type="number" min="1" max="{{myViewer.total}}" ng-model="myViewer.page" class="col-sm-4" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Total:</label>
+                                <input type="number" ng-model="myViewer.total" class="col-sm-4" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Zoom:</label>
+                                <input type="number" min="0" ng-model="myViewer.zoom" class="col-sm-4" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Offset:</label>
+                                <input type="number" min="-{{myViewer.width}}" max="0" ng-model="myViewer.offset.x" class="col-sm-2" />
+                                <input type="number" min="-{[myViewer.height}}" max="0" ng-model="myViewer.offset.y" class="col-sm-2" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Rotation:</label>
+                                <input type="number" min="0" max="360" step="90" ng-model="myViewer.rotation" class="col-sm-4" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Width:</label>
+                                <input type="number" min="0" ng-model="myViewer.width" class="col-sm-4" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Height:</label>
+                                <input type="number" min="0" ng-model="myViewer.height" class="col-sm-4" />
+                            </div>
+                            <div class="row">
+                                <label class="col-sm-2">Loading:</label>
+                                <div class="col-sm-4">
+                                    {{myViewer.loading ? 'Loading' : '' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <footer></footer>
+        
+        <!-- bower:js -->
+        <script src="js/lib/angular.js"></script>
+        <script src="js/lib/compatibility.js"></script>
+        <script src="js/lib/pdf.js"></script>
+        <script src="js/lib/pdf.worker.js"></script>
+        <!-- endbower -->
+
+        <!-- TMS -->
+        <script src="js/lib/angular-pdfjs.min.js"></script>
+        <script src="js/example-app.js"></script>
+    </body>
+</html>
