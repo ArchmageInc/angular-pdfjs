@@ -13,13 +13,13 @@ PDFJS is the JavaScript library developed by Mozilla which renders PDFs onto HTM
 
 ## Installation
 
-1. angular-pdfjs is available as a bower dependency and can be installed with:
+* angular-pdfjs is available as a bower dependency and can be installed with:
 
 ```
 bower install angular-pdfjs
 ```
 
-2. The script files can then be imported into your project as usual:
+* The script files can then be imported into your project as usual:
 
 ```html
 <script src="bower_components/pdfjs-dist/web/compatibility.js" ></script>
@@ -30,7 +30,7 @@ bower install angular-pdfjs
 
 *The compatability package of PDFJS is not required, though it includes es5-polyfills which are required for older browser support.*
 
-3. The module can now be included as a dependency in your application:
+* The module can now be included as a dependency in your application:
 
 ```js
 var myApp = angular.module('myApp', ['angular-pdfjs']);
@@ -76,49 +76,49 @@ This controller will provide access to manipulate the PDF in a number of ways.
 The controller provides access to various methods for control.
 
 #### Dimensions
-**setHeight(heightInPx)** Sets the container's height to a specified value. 
-**setWidth(widthInPx)** Sets the container's width to a specified value.
+- **setHeight(heightInPx)** Sets the container's height to a specified value. 
+- **setWidth(widthInPx)** Sets the container's width to a specified value.
 
 #### Zooming
-**zoomIn(\[speed])** Zooms the PDF larger, if *speed* is not specified, 25% (0.25) is used.
-**zoomOut(\[speed])** Zooms the PDF smaller, if *speed* is not specified, 25% (0.25) is used.
-**zoomTo(scale)** Zooms the PDF to the specified scale, it is pinned to the top left corner.
+- **zoomIn(\[speed])** Zooms the PDF larger, if *speed* is not specified, 25% (0.25) is used.
+- **zoomOut(\[speed])** Zooms the PDF smaller, if *speed* is not specified, 25% (0.25) is used.
+- **zoomTo(scale)** Zooms the PDF to the specified scale, it is pinned to the top left corner.
 
 #### Panning
-**panLeft(\[speed])** Pans (moves the viewpoint of) the PDF to the left. If *speed* is not specified, 10 pixels is used.
-**panRight(\[speed])** Pans the PDF to the right with a default speed of 10 pixels.
-**panUp(\[speed])** Pans the PDF up with a default speed of 10 pixels.
-**panDown(\[speed])** Pans the PDF down with a default speed of 10 pixels.
-**panTo(x, y)** Pans the PDF to the specified point. **NOTE** offset values are always negative, as the PDF is pinned to the top left corner.
+- **panLeft(\[speed])** Pans (moves the viewpoint of) the PDF to the left. If *speed* is not specified, 10 pixels is used.
+- **panRight(\[speed])** Pans the PDF to the right with a default speed of 10 pixels.
+- **panUp(\[speed])** Pans the PDF up with a default speed of 10 pixels.
+- **panDown(\[speed])** Pans the PDF down with a default speed of 10 pixels.
+- **panTo(x, y)** Pans the PDF to the specified point. **NOTE** offset values are always negative, as the PDF is pinned to the top left corner.
 
 #### Rotation
-**rotateLeft(\[deg])** Rotates the PDF counter clockwise in 90 degree increments. 
-**rotateRight(\[deg])** Rotates the PDF clockwise in 90 degree increments.
-**rotateTo(\[deg])** Rotates the PDF to a specified degree, rounded to the nearest 90 degrees.
+- **rotateLeft(\[deg])** Rotates the PDF counter clockwise in 90 degree increments. 
+- **rotateRight(\[deg])** Rotates the PDF clockwise in 90 degree increments.
+- **rotateTo(\[deg])** Rotates the PDF to a specified degree, rounded to the nearest 90 degrees.
 
 #### Paging
-**nextPage()** Loads the next page of the PDF, if there is one.
-**previousPage()** Loads the previous page of the PDF, if there is one.
-**goToPage(pageNumber)** Loads the specified page, if it exists.
+- **nextPage()** Loads the next page of the PDF, if there is one.
+- **previousPage()** Loads the previous page of the PDF, if there is one.
+- **goToPage(pageNumber)** Loads the specified page, if it exists.
 
 #### Document
-**loadDocument(url)** Attempts to retrieve a PDF from the specified URL. This will reset paging, rotation, dimensions, and offsets.
-**getDocument()** Returns the current PDFJS pdf document
+- **loadDocument(url)** Attempts to retrieve a PDF from the specified URL. This will reset paging, rotation, dimensions, and offsets.
+- **getDocument()** Returns the current PDFJS pdf document
 
 
 #### Properties
 The controller provides access to properties, which can be bound to an ngModel controller for manipulation.
 
-**loading** *(Read Only)* The promise if PDFJS is currently rendering, null otherwise. Can be used for ng-show loading indicators.
-**total** *(Read Only)* The total number of pages in the current PDF
-**page** The current page number, valid range is 1 to **total**
-**width** The viewable width of the PDF, in pixels. When loaded, defaults to the actual with of the PDF. Valid range is greater than 0.
-**height** The viewable height of the PDF, in pixels. When loaded, defaults to the actual height of the PDF. Valid range is greater than 0.
-**zoom** The magnification level of the PDF. When loaded, defaults to 1. Valid range is greater than 0.
-**rotation** The rotation, in degrees, of the PDF. When loaded, defaults to 0. Valid range is in increments of 90.
-**offsetX** The horizontal offset, in pixels, of the viewable PDF. When loaded, defaults to 0. Valid range is **width** - ( **zoom** * **width** ) to 0
-**offsetY** The vertical offset, in pixels, of the viewable PDF. When loaded, defaults to 0. Valid range is **height** - ( **zoom** * **height** ) to 0
-**offset** A hash containing an **x** and **y** value corresponding to the **offsetX** and **offsetY**. (Useful for directly replacing the offset in one assignment)
+- **loading** *(Read Only)* The promise if PDFJS is currently rendering, null otherwise. Can be used for ng-show loading indicators.
+- **total** *(Read Only)* The total number of pages in the current PDF
+- **page** The current page number, valid range is 1 to **total**
+- **width** The viewable width of the PDF, in pixels. When loaded, defaults to the actual with of the PDF. Valid range is greater than 0.
+- **height** The viewable height of the PDF, in pixels. When loaded, defaults to the actual height of the PDF. Valid range is greater than 0.
+- **zoom** The magnification level of the PDF. When loaded, defaults to 1. Valid range is greater than 0.
+- **rotation** The rotation, in degrees, of the PDF. When loaded, defaults to 0. Valid range is in increments of 90.
+- **offsetX** The horizontal offset, in pixels, of the viewable PDF. When loaded, defaults to 0. Valid range is **width** - ( **zoom** * **width** ) to 0
+- **offsetY** The vertical offset, in pixels, of the viewable PDF. When loaded, defaults to 0. Valid range is **height** - ( **zoom** * **height** ) to 0
+- **offset** A hash containing an **x** and **y** value corresponding to the **offsetX** and **offsetY**. (Useful for directly replacing the offset in one assignment)
 
 Given our above example implementation, any element in the same scope would able to use ng-click to execute a method:
 
