@@ -136,7 +136,7 @@
                 function setWidth(width) {
                     vState.width = width;
                     width        = parseFloat(width);
-                    if (!isNaN(width)) {
+                    if (!isNaN(width) && width > 0) {
                         fState.width = width;
                         return renderPage();
                     }
@@ -145,7 +145,7 @@
                 function setHeight(height) {
                     vState.height = height;
                     height        = parseFloat(height);
-                    if (!isNaN(height)) {
+                    if (!isNaN(height) && height > 0) {
                         fState.height = height;
                         return renderPage();
                     }
