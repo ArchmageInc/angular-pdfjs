@@ -88,11 +88,12 @@
                             viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
 
                             setContainerSize();
-                            _page.render({
+                            loading = _page.render({
                                 canvasContext: canvasContext,
                                 viewport: viewport
+                            }).then(function () {
+                                resetState();
                             });
-                            resetState();
                         });
                         return loading;
                     }
@@ -410,10 +411,10 @@
                 var moveState = null,
                     canvas    = angular.element('<canvas></canvas>'),
                     container = angular.element('<div></div>'),
-                    options   = angular.extend({}, $parse(attrs.pdfViewer)($scope), {
+                    options   = angular.extend({
                         mouseZoom: true,
                         mousePan:  true
-                    }),
+                    }, $scope.$eval(attrs.pdfViewer)),
                     offset = {
                         x: 0,
                         y: 0
@@ -439,15 +440,17 @@
                     event.preventDefault();
                     event.stopImmediatePropagation();
 
-                    var dy = event.deltaY = -1 / 40 * event.wheelDelta;
+                    var dy = (event.originalEvent && event.originalEvent.wheelDelta) || event.wheelDelta;
                     ctrl.zoomIn(dy / 100);
                 }
                 function moveStart(event) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
+                    var x = (event.originalEvent && event.originalEvent.x) || event.x;
+                    var y = (event.originalEvent && event.originalEvent.y) || event.y;
                     moveState = {
-                        x: event.x - offset.x,
-                        y: event.y - offset.y
+                        x: x - offset.x,
+                        y: y - offset.y
                     };
                 }
                 function moveEnd(event) {
@@ -458,10 +461,12 @@
                 function move(event) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
+                    var x = (event.originalEvent && event.originalEvent.x) || event.x;
+                    var y = (event.originalEvent && event.originalEvent.y) || event.y;
                     if (moveState) {
                         ctrl.offset = offset = {
-                            x: event.x - moveState.x,
-                            y: event.y - moveState.y
+                            x: x - moveState.x,
+                            y: y - moveState.y
                         };
                     }
                 }
