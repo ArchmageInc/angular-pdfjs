@@ -78,17 +78,13 @@
                 function renderPage() {
                     if (okToRender()) {
                         loading = pdfDocument.getPage(fState.page).then(function (_page) {
-                            var width,
-                                height,
-                                viewBox,
+                            var viewBox,
                                 viewport;
 
                             oStateInitialize(_page.getViewport(1));
 
                             currentPage = _page;
-                            width       = fState.rotation % 180 ? oState.height : oState.width;
-                            height      = fState.rotation % 180 ? oState.width : oState.height;
-                            viewBox     = [0, 0, width, height];
+                            viewBox     = [0, 0, oState.width, oState.height];
                             viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
 
                             setContainerSize();
