@@ -25,7 +25,7 @@ bower install angular-pdfjs
 <script src="bower_components/pdfjs-dist/web/compatibility.js" ></script>
 <script src="bower_components/pdfjs-dist/build/pdf.js" ></script>
 <script src="bower_components/angular/angular.js" ></script>
-<sciprt src="bower_components/angular-pdfjs/dist/angular-pdfjs.min.js" ></script>
+<script src="bower_components/angular-pdfjs/dist/angular-pdfjs.min.js" ></script>
 ```
 
 *The compatability package of PDFJS is not required, though it includes es5-polyfills which are required for older browser support.*
