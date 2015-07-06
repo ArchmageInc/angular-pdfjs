@@ -432,6 +432,13 @@
                     $scope[attrs.$normalize(attrs.id)] = ctrl;
                 }
 
+                function getEventPoint(event) {
+                    return {
+                        x: (event.originalEvent && event.originalEvent.x) || event.clientX || (event.touches && event.touches[0].clientX),
+                        y: (event.originalEvent && event.originalEvent.y) || event.clientY || (event.touches && event.touches[0].clientY)
+                    };
+                }
+
                 function linkUrl(url) {
                     ctrl.loadDocument(url);
                 }
@@ -444,13 +451,14 @@
                     ctrl.zoomIn(dy / 100);
                 }
                 function moveStart(event) {
+                    var eventPoint = getEventPoint(event);
+
                     event.preventDefault();
                     event.stopImmediatePropagation();
-                    var x = (event.originalEvent && event.originalEvent.x) || event.x;
-                    var y = (event.originalEvent && event.originalEvent.y) || event.y;
+
                     moveState = {
-                        x: x - offset.x,
-                        y: y - offset.y
+                        x: eventPoint.x - offset.x,
+                        y: eventPoint.y - offset.y
                     };
                 }
                 function moveEnd(event) {
@@ -459,14 +467,15 @@
                     moveState = null;
                 }
                 function move(event) {
+                    var eventPoint = getEventPoint(event);
+
                     event.preventDefault();
                     event.stopImmediatePropagation();
-                    var x = (event.originalEvent && event.originalEvent.x) || event.x;
-                    var y = (event.originalEvent && event.originalEvent.y) || event.y;
+
                     if (moveState) {
                         ctrl.offset = offset = {
-                            x: x - moveState.x,
-                            y: y - moveState.y
+                            x: eventPoint.x - moveState.x,
+                            y: eventPoint.y - moveState.y
                         };
                     }
                 }
