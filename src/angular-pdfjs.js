@@ -8,7 +8,7 @@
     .run(function () {
         PDFJS.verbosity = PDFJS.VERBOSITY_LEVELS.errors;
     })
-    .directive('pdfViewer', function ($parse) {
+    .directive('pdfViewer', function () {
         return {
             restrict: 'A',
             controller: function ($scope, $q) {
@@ -88,12 +88,12 @@
                             viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
 
                             setContainerSize();
+
+                            console.log(viewport);
                             loading = _page.render({
                                 canvasContext: canvasContext,
                                 viewport: viewport
-                            }).then(function () {
-                                resetState();
-                            });
+                            }).then(resetState);
                         });
                         return loading;
                     }
@@ -379,13 +379,13 @@
                         }
                     },
                     offsetX: {
-                        set: panLeft,
+                        set: setOffsetX,
                         get: function () {
                             return vState.offsetX;
                         }
                     },
                     offsetY: {
-                        set: panUp,
+                        set: setOffsetY,
                         get: function () {
                             return vState.offsetY;
                         }
