@@ -1,6 +1,6 @@
 /* global Object, Math, PDFJS, angular */
 
-(function (Object, Math, PDFJS, angular) {
+(function (Object, Math, angular) {
     'use strict';
     angular.module('angular-pdfjs', [
         
@@ -89,7 +89,6 @@
 
                             setContainerSize();
 
-                            console.log(viewport);
                             loading = _page.render({
                                 canvasContext: canvasContext,
                                 viewport: viewport
@@ -498,4 +497,4 @@
             }
         };
     });
-}(Object, Math, PDFJS, angular));
+}(Object, Math, angular));

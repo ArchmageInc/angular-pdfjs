@@ -3,11 +3,18 @@
 (function () {
     'use strict';
 
-    function mockPromise(data) {
+    function mockPromise(data, pause) {
         return {
-            then: jasmine.createSpy('then').and.callFake(function (sFn) {
-                return sFn(data);
-            })
+            then: function (sFn) {
+                if (pause) {
+                    setTimeout(function () {
+                        sFn(data);
+                    }, 100);
+                    return mockPromise(data, pause);
+                } else {
+                    return sFn(data);
+                }
+            }
         };
     }
 
@@ -47,16 +54,41 @@
         });
     }
 
-    function init(mocks) {
-        mocks = _.extend({}, mocks);
-        var inj = {};
+    function mockPDFJS(document, pause) {
+        return {
+            VERBOSITY_LEVELS: {
+                warnings: 1,
+                errors: 2
+            },
+            PageViewport: function () {
+                _.extend(this, mockPageViewport.apply(this, arguments));
+            },
+            getDocument: jasmine.createSpy().and.returnValue(mockPromise(document, pause))
+        };
+    }
 
-        _.defaults(mocks, {
+    function init(angularMocks, pdfjsMocks) {
+        angularMocks = _.extend({}, angularMocks);
+        pdfjsMocks = _.extend({}, pdfjsMocks);
+        var inj = {
+            pdfjs: {}
+        };
+
+        _.defaults(angularMocks, {
 
         });
 
+        inj.pdfjs.viewport = pdfjsMocks.viewport || mockPageViewport();
+        inj.pdfjs.page = pdfjsMocks.page || mockPage(inj.pdfjs.viewport);
+        inj.pdfjs.document = pdfjsMocks.document || mockDocument(3, inj.pdfjs.page);
+        inj.pdfjs.PDFJS = pdfjsMocks.PDFJS || mockPDFJS(inj.pdfjs.document);
+
+        Object.defineProperty(window, 'PDFJS', {
+            value: inj.pdfjs.PDFJS
+        });
+
         module('angular-pdfjs', function ($provide) {
-            _.forEach(mocks, function (mock, mockName) {
+            _.forEach(angularMocks, function (mock, mockName) {
                 $provide.constant(mockName, mock);
                 inj[mockName] = mock;
             });
@@ -81,24 +113,7 @@
     var directive = _.partial(initDirective, '<div pdf-viewer pdf-url="pdfUrl" id="my-viewer"></div>');
 
     function plainSetup() {
-        var inj = init(),
-            viewport = mockPageViewport(),
-            page = mockPage(viewport),
-            document = mockDocument(3, page);
-
-        _.merge(inj, {
-            viewport: viewport,
-            page: page,
-            document: document
-        });
-
-
-        PDFJS.PageViewport = function () {
-            _.extend(this, mockPageViewport.apply(this, arguments));
-        };
-        spyOn(PDFJS, 'getDocument').and.returnValue(mockPromise(document));
-
-
+        var inj = init();
 
         inj.$el = directive(inj, {
             pdfUrl: 'mockUrl'
@@ -107,6 +122,13 @@
     }
 
     describe('angular-pdfjs directive > ', function () {
+        beforeEach(function () {
+            jasmine.clock().install();
+        });
+        afterEach(function () {
+            jasmine.clock().uninstall();
+        });
+        
         describe('Base functionality > ', function () {
             it('attaches the controller to the scope based on the id', function () {
                 var inj = init(),
@@ -124,7 +146,21 @@
                 var inj = plainSetup();
 
                 expect(PDFJS.getDocument).toHaveBeenCalledWith('mockUrl');
-                expect(inj.$scope.myViewer.getDocument()).toEqual(inj.document);
+                expect(inj.$scope.myViewer.getDocument()).toEqual(inj.pdfjs.document);
+            });
+            it('Exposes a loading indicator', function () {
+                var inj = init({}, {
+                        PDFJS: mockPDFJS(mockDocument(1, mockPage(mockPageViewport())), true)
+                    });
+
+                directive(inj, {
+                    pdfUrl: 'mockUrl'
+                });
+
+                expect(inj.$scope.myViewer.loading).toBeDefined();
+                jasmine.clock().tick(101);
+                expect(inj.$scope.myViewer.loading).toBeUndefined();
+
             });
         });
         describe('Page Navigation > ', function () {
@@ -135,9 +171,9 @@
 
                 viewer.nextPage();
                 
-                expect(inj.document.getPage.calls.count()).toBe(2);
+                expect(inj.pdfjs.document.getPage.calls.count()).toBe(2);
                 expect(viewer.page).toBe(2);
-                expect(inj.document.getPage.calls.mostRecent().args[0]).toBe(2);
+                expect(inj.pdfjs.document.getPage.calls.mostRecent().args[0]).toBe(2);
             });
             it('Goes to a maximum page', function () {
                 var inj = plainSetup(),
@@ -145,7 +181,7 @@
 
                 viewer.page = 4;
 
-                expect(inj.document.getPage.calls.count()).toBe(2);
+                expect(inj.pdfjs.document.getPage.calls.count()).toBe(2);
                 expect(viewer.page).toBe(3);
             });
             it('Goes to a minimum of page 1', function () {
@@ -154,7 +190,7 @@
 
                 viewer.previousPage();
 
-                expect(inj.document.getPage.calls.count()).toBe(1);
+                expect(inj.pdfjs.document.getPage.calls.count()).toBe(1);
                 expect(viewer.page).toBe(1);
             });
             it('Will not render if page isNaN', function () {
@@ -163,13 +199,13 @@
 
                 viewer.page = 'not a number';
 
-                expect(inj.document.getPage.calls.count()).toBe(1);
+                expect(inj.pdfjs.document.getPage.calls.count()).toBe(1);
             });
             it('Exposes the total number of pages', function () {
                 var inj = plainSetup(),
                     viewer = inj.$scope.myViewer;
 
-                expect(viewer.total).toEqual(inj.document.numPages);
+                expect(viewer.total).toEqual(inj.pdfjs.document.numPages);
                 
             });
             it('Does not allow the setting of total pages', function () {
@@ -177,7 +213,7 @@
                     viewer = inj.$scope.myViewer;
 
                 viewer.total = 100;
-                expect(viewer.total).toEqual(inj.document.numPages);
+                expect(viewer.total).toEqual(inj.pdfjs.document.numPages);
 
             });
         });
@@ -190,9 +226,9 @@
 
                         viewer.zoomIn();
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.scale).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBeGreaterThan(1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     });
                     it('Zooms in with params', function () {
                         var inj = plainSetup(),
@@ -200,9 +236,9 @@
 
                         viewer.zoomIn(4);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.scale).toBe(5);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBe(5);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     });
                 });
                 describe('Zoom out > ', function () {
@@ -211,9 +247,9 @@
                         viewer = inj.$scope.myViewer;
 
                         viewer.zoomOut();
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.scale).toBeLessThan(1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBeLessThan(1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     });
 
                     it('Zooms out to a minimum', function () {
@@ -222,9 +258,9 @@
 
                         viewer.zoomOut(4);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.scale).toBe(1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBe(1);
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                 });
                 describe('Bound zoom > ', function () {
@@ -234,10 +270,10 @@
 
                         viewer.zoom = 100;
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.scale).toBe(100);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBe(100);
                         expect(viewer.zoom).toEqual(100);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     });
                 });
             });
@@ -249,18 +285,18 @@
 
                         viewer.panRight(1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
                         
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Does not error with invalid pan argument', function () {
                         var inj = plainSetup(),
                         viewer = inj.$scope.myViewer;
 
                         expect(_.partial(viewer.panRight, 'a')).not.toThrow();
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
                         
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Pans right within page width limit', function () {
                         var inj = plainSetup(),
@@ -269,9 +305,9 @@
                         viewer.zoomTo(100);
                         viewer.panRight(1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
                         
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(2);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
                     });
                 });
                 describe('Pan Left > ', function () {
@@ -281,18 +317,18 @@
 
                         viewer.panLeft(1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
                         
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Does not error with invalid pan argument', function () {
                         var inj = plainSetup(),
                         viewer = inj.$scope.myViewer;
 
                         expect(_.partial(viewer.panLeft, 'a')).not.toThrow();
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
                         
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Pans left within page width limit', function () {
                         var inj = plainSetup(),
@@ -301,12 +337,12 @@
                         viewer.zoomTo(100);
                         
                         viewer.panRight(2);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-2);
                         
                         viewer.panLeft(1);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
                         
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(3);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
                     });
                 });
                 describe('Pan Up > ', function () {
@@ -316,18 +352,18 @@
 
                         viewer.panUp(1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Does not error with invalid pan argument', function () {
                         var inj = plainSetup(),
                         viewer = inj.$scope.myViewer;
 
                         expect(_.partial(viewer.panUp, 'a')).not.toThrow();
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Pans up within page height limit', function () {
                         var inj = plainSetup(),
@@ -336,12 +372,12 @@
                         viewer.zoomTo(100);
                         
                         viewer.panDown(2);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
 
                         viewer.panUp(1);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(3);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
                     });
                 });
                 describe('Pan Down > ', function () {
@@ -351,18 +387,18 @@
 
                         viewer.panDown(1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Does not error with invalid pan argument', function () {
                         var inj = plainSetup(),
                         viewer = inj.$scope.myViewer;
 
                         expect(_.partial(viewer.panDown, 'a')).not.toThrow();
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                     it('Pans up within page height limit', function () {
                         var inj = plainSetup(),
@@ -371,9 +407,9 @@
                         viewer.zoomTo(100);
 
                         viewer.panDown(2);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(2);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
                     });
                 });
                 describe('Pan To > ', function () {
@@ -383,10 +419,10 @@
 
                         expect(_.partial(viewer.panTo, 'a', 'b')).not.toThrow();
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(0);
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
                     });
                 });
                 describe('Bound offsets > ', function () {
@@ -398,14 +434,14 @@
                         viewer.zoomTo(100);
 
                         viewer.offset.x = -2;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-2);
                         expect(viewer.offset.x).toEqual(-2);
 
                         viewer.offset.x = -1;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
                         expect(viewer.offset.x).toEqual(-1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(3);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
                     });
                     it('Pans when modifying bound offset y', function () {
                         var inj = plainSetup(),
@@ -414,14 +450,14 @@
                         viewer.zoomTo(100);
 
                         viewer.offset.y = -2;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
                         expect(viewer.offset.y).toEqual(-2);
 
                         viewer.offset.y = -1;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-1);
                         expect(viewer.offset.y).toEqual(-1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(3);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
                     });
                     it('Pans when modifying bound offsetX', function () {
                         var inj = plainSetup(),
@@ -430,14 +466,14 @@
                         viewer.zoomTo(100);
 
                         viewer.offsetX = -2;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-2);
                         expect(viewer.offsetX).toEqual(-2);
 
                         viewer.offsetX = -1;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-1);
                         expect(viewer.offsetX).toEqual(-1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(3);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
                     });
                     it('Pans when modifying bound offsetY', function () {
                         var inj = plainSetup(),
@@ -446,14 +482,14 @@
                         viewer.zoomTo(100);
 
                         viewer.offsetY = -2;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-2);
                         expect(viewer.offsetY).toEqual(-2);
 
                         viewer.offsetY = -1;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toBe(-1);
                         expect(viewer.offsetY).toEqual(-1);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(3);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
                     });
                     it('Does not error when invalid offset set', function () {
                         var inj = plainSetup(),
@@ -478,9 +514,9 @@
 
                         viewer.rotateRight();
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(90);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(90);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     });
                     it('Rotates left', function () {
                         var inj = plainSetup(),
@@ -488,9 +524,9 @@
 
                         viewer.rotateLeft();
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(-90);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(-90);
 
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     });
                     it('Does not error with an invalid rotation', function () {
                         var inj = plainSetup(),
@@ -498,7 +534,7 @@
 
                         expect(_.partial(viewer.rotateTo, 'a')).not.toThrow();
 
-                        expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
 
                     });
                 });
@@ -508,12 +544,12 @@
                         viewer = inj.$scope.myViewer;
 
                         viewer.rotation = 90;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(90);
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(90);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                         
                         viewer.rotation = -90;
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(-90);
-                        expect(inj.page.render.calls.count()).toBeGreaterThan(2);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.rotation).toEqual(-90);
+                        expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
                     });
                     it('Rounds to the nearest 90 degrees', function () {
                         var inj = plainSetup(),
@@ -531,8 +567,8 @@
                         viewer.rotation = 90;
                         viewer.panTo(-1, -1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toEqual(0);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toEqual(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toEqual(0);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toEqual(0);
                     });
                     it('Uses proper dimensions when rotated and panning', function () {
                         var inj = plainSetup(),
@@ -542,8 +578,8 @@
                         viewer.rotation = 90;
                         viewer.panTo(-1, -1);
 
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetX).toEqual(-1);
-                        expect(inj.page.render.calls.mostRecent().args[0].viewport.offsetY).toEqual(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toEqual(-1);
+                        expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetY).toEqual(-1);
                     });
                 });
             });
@@ -556,7 +592,7 @@
                         viewer.width = 'a';
                     }).not.toThrow();
 
-                    expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
 
                 });
                 it('Sets the container width', function () {
@@ -566,7 +602,7 @@
                     viewer.width = 100;
 
                     expect(viewer.width).toEqual(100);
-                    expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     expect(inj.$el.children().css('width')).toEqual('100px');
 
                 });
@@ -578,7 +614,7 @@
                         viewer.height = 'a';
                     }).not.toThrow();
 
-                    expect(inj.page.render.calls.count()).not.toBeGreaterThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
 
                 });
                 it('Sets the container height', function () {
@@ -588,7 +624,7 @@
                     viewer.height = 100;
 
                     expect(viewer.height).toEqual(100);
-                    expect(inj.page.render.calls.count()).toBeGreaterThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
                     expect(inj.$el.children().css('height')).toEqual('100px');
 
                 });
