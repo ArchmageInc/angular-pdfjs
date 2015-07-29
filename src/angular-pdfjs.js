@@ -192,7 +192,7 @@
                     x   = x > 0 ? 0 : x;
                     y   = y < minY ? minY : y;
                     y   = y > 0 ? 0 : y;
-                    
+
                     vState.offsetX = x;
                     vState.offsetY = y;
 
@@ -467,7 +467,7 @@
                 }
                 function move(event) {
                     var eventPoint = getEventPoint(event);
-
+                    
                     event.preventDefault();
                     event.stopImmediatePropagation();
 

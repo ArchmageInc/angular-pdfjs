@@ -1,6 +1,6 @@
 /* global Object, Math, PDFJS, angular */
 
-(function (Object, Math, PDFJS, angular) {
+(function (Object, Math, angular) {
     'use strict';
     angular.module('angular-pdfjs', [
         
@@ -8,7 +8,7 @@
     .run(function () {
         PDFJS.verbosity = PDFJS.VERBOSITY_LEVELS.errors;
     })
-    .directive('pdfViewer', ["$parse", function ($parse) {
+    .directive('pdfViewer', function () {
         return {
             restrict: 'A',
             controller: ["$scope", "$q", function ($scope, $q) {
@@ -88,12 +88,11 @@
                             viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
 
                             setContainerSize();
+
                             loading = _page.render({
                                 canvasContext: canvasContext,
                                 viewport: viewport
-                            }).then(function () {
-                                resetState();
-                            });
+                            }).then(resetState);
                         });
                         return loading;
                     }
@@ -193,7 +192,7 @@
                     x   = x > 0 ? 0 : x;
                     y   = y < minY ? minY : y;
                     y   = y > 0 ? 0 : y;
-                    
+
                     vState.offsetX = x;
                     vState.offsetY = y;
 
@@ -379,13 +378,13 @@
                         }
                     },
                     offsetX: {
-                        set: panLeft,
+                        set: setOffsetX,
                         get: function () {
                             return vState.offsetX;
                         }
                     },
                     offsetY: {
-                        set: panUp,
+                        set: setOffsetY,
                         get: function () {
                             return vState.offsetY;
                         }
@@ -432,6 +431,13 @@
                     $scope[attrs.$normalize(attrs.id)] = ctrl;
                 }
 
+                function getEventPoint(event) {
+                    return {
+                        x: (event.originalEvent && event.originalEvent.x) || event.clientX || (event.touches && event.touches[0].clientX),
+                        y: (event.originalEvent && event.originalEvent.y) || event.clientY || (event.touches && event.touches[0].clientY)
+                    };
+                }
+
                 function linkUrl(url) {
                     ctrl.loadDocument(url);
                 }
@@ -444,13 +450,14 @@
                     ctrl.zoomIn(dy / 100);
                 }
                 function moveStart(event) {
+                    var eventPoint = getEventPoint(event);
+
                     event.preventDefault();
                     event.stopImmediatePropagation();
-                    var x = (event.originalEvent && event.originalEvent.x) || event.x;
-                    var y = (event.originalEvent && event.originalEvent.y) || event.y;
+
                     moveState = {
-                        x: x - offset.x,
-                        y: y - offset.y
+                        x: eventPoint.x - offset.x,
+                        y: eventPoint.y - offset.y
                     };
                 }
                 function moveEnd(event) {
@@ -459,14 +466,15 @@
                     moveState = null;
                 }
                 function move(event) {
+                    var eventPoint = getEventPoint(event);
+                    
                     event.preventDefault();
                     event.stopImmediatePropagation();
-                    var x = (event.originalEvent && event.originalEvent.x) || event.x;
-                    var y = (event.originalEvent && event.originalEvent.y) || event.y;
+
                     if (moveState) {
                         ctrl.offset = offset = {
-                            x: x - moveState.x,
-                            y: y - moveState.y
+                            x: eventPoint.x - moveState.x,
+                            y: eventPoint.y - moveState.y
                         };
                     }
                 }
@@ -488,5 +496,5 @@
                 $scope.$watch(attrs.pdfUrl, linkUrl);
             }
         };
-    }]);
-}(Object, Math, PDFJS, angular));
+    });
+}(Object, Math, angular));

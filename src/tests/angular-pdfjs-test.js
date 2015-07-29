@@ -1,4 +1,4 @@
-/* global PDFJS */
+/* global PDFJS, _, angular, jasmine, expect */
 
 (function () {
     'use strict';
@@ -630,5 +630,282 @@
                 });
             });
         });
+        describe('Mouse Functionality > ', function () {
+            
+            var mouseDirective = _.partial(initDirective, '<div pdf-viewer="options" pdf-url="pdfUrl" id="my-viewer"></div>');
+
+            describe('Browser Compatability > ', function () {
+                it('Zooms in with positive scroll', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            options: {
+                                mouseZoom: true,
+                                mousePan: true
+                            },
+                            pdfUrl: 'mockUrl'
+                        }),
+                        event = _.extend(angular.element.Event('wheel'), {
+                            originalEvent: {
+                                wheelDelta: 100
+                            }
+                        });
+
+                    $el.find('div').trigger(event);
+
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBeGreaterThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
+                });
+                it('Pans with mouse', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        mouseStart = _.extend(angular.element.Event('mousedown'), {
+                            originalEvent: {
+                                x: 10,
+                                y: 1
+                            }
+                        }),
+                        moveLeftEvent = _.extend(angular.element.Event('mousemove'), {
+                            originalEvent: {
+                                x: 1,
+                                y: 1
+                            }
+                        }),
+                        moveRightEvent = _.extend(angular.element.Event('mousemove'), {
+                            originalEvent: {
+                                x: 2,
+                                y: 1
+                            }
+                        }),
+                        viewer = inj.$scope.myViewer;
+
+                    viewer.zoomIn(100);
+
+                    $el.find('div').trigger(mouseStart);
+                    $el.find('div').trigger(moveLeftEvent);
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-9);
+
+                    $el.find('div').trigger(moveRightEvent);
+
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-8);
+
+                });
+
+            });
+            describe('Zooming > ', function () {
+                it('Zooms in with positive scroll', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        event = _.extend(angular.element.Event('wheel'), {
+                            wheelDelta: 100
+                        });
+
+                    $el.find('div').trigger(event);
+
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBeGreaterThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(1);
+                });
+                it('Zooms out with negative scroll', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        event = _.extend(angular.element.Event('wheel'), {
+                            wheelDelta: -100
+                        }),
+                        viewer = inj.$scope.myViewer;
+
+                    viewer.zoomIn();
+                    $el.find('div').trigger(event);
+
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBeLessThan(1);
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
+                });
+                it('Allows disabling mouse functions through options', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            options: {
+                                mouseZoom: false
+                            },
+                            pdfUrl: 'mockUrl'
+                        }),
+                        event = _.extend(angular.element.Event('wheel'), {
+                            wheelDelta: 100
+                        });
+
+                    $el.find('div').trigger(event);
+
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.scale).toBe(1);
+                    expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
+                });
+            });
+            describe('Panning > ', function () {
+                it('Pans with mouse', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        mouseStart = _.extend(angular.element.Event('mousedown'), {
+                            clientX: 10,
+                            clientY: 1
+                        }),
+                        moveLeftEvent = _.extend(angular.element.Event('mousemove'), {
+                            clientX: 1,
+                            clientY: 1
+                        }),
+                        moveRightEvent = _.extend(angular.element.Event('mousemove'), {
+                            clientX: 2,
+                            clientY: 1
+                        }),
+                        viewer = inj.$scope.myViewer;
+
+                    viewer.zoomIn(100);
+                    
+                    $el.find('div').trigger(mouseStart);
+                    $el.find('div').trigger(moveLeftEvent);
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-9);
+
+                    $el.find('div').trigger(moveRightEvent);
+
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-8);
+                    
+                });
+                
+                it('Allows disabling mouse pan through options', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            options: {
+                                mousePan: false
+                            },
+                            pdfUrl: 'mockUrl'
+                        }),
+                        mouseStart = _.extend(angular.element.Event('mousedown'), {
+                            clientX: 0,
+                            clientY: 0
+                        }),
+                        mouseMove = _.extend(angular.element.Event('mousemove'), {
+                            clientX: 1,
+                            clientY: 1
+                        }),
+                        viewer = inj.$scope.myViewer;
+
+                    viewer.zoomIn();
+
+                    $el.find('div').trigger(mouseStart);
+                    $el.find('div').trigger(mouseMove);
+
+                    expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(2);
+                });
+                it('Does not continue to render after mouse released', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        mouseStart = _.extend(angular.element.Event('mousedown'), {
+                            clientX: 10,
+                            clientY: 1
+                        }),
+                        moveLeftEvent = _.extend(angular.element.Event('mousemove'), {
+                            clientX: 1,
+                            clientY: 1
+                        }),
+                        moveRightEvent = _.extend(angular.element.Event('mousemove'), {
+                            clientX: 2,
+                            clientY: 1
+                        }),
+                        mouseEnd = angular.element.Event('mouseup'),
+                        viewer = inj.$scope.myViewer;
+
+                    viewer.zoomIn(100);
+
+                    $el.find('div').trigger(mouseStart);
+                    $el.find('div').trigger(moveLeftEvent);
+                    $el.find('div').trigger(mouseEnd);
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-9);
+
+                    $el.find('div').trigger(moveRightEvent);
+
+                    expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(3);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).not.toBe(-8);
+                });
+                it('Pans with touch', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        mouseStart = _.extend(angular.element.Event('touchstart'), {
+                            touches: [
+                                {
+                                    clientX: 10,
+                                    clientY: 1
+                                }
+                            ]
+                        }),
+                        moveLeftEvent = _.extend(angular.element.Event('touchmove'), {
+                            touches: [
+                                {
+                                    clientX: 1,
+                                    clientY: 1
+                                }
+                            ]
+                        }),
+                        moveRightEvent = _.extend(angular.element.Event('touchmove'), {
+                            touches: [
+                                {
+                                    clientX: 2,
+                                    clientY: 1
+                                }
+                            ]
+                        }),
+                        viewer = inj.$scope.myViewer;
+
+                    viewer.zoomIn(100);
+
+                    $el.find('div').trigger(mouseStart);
+                    $el.find('div').trigger(moveLeftEvent);
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(2);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-9);
+
+                    $el.find('div').trigger(moveRightEvent);
+
+
+                    expect(inj.pdfjs.page.render.calls.count()).toBeGreaterThan(3);
+                    expect(inj.pdfjs.page.render.calls.mostRecent().args[0].viewport.offsetX).toBe(-8);
+
+                });
+            });
+            describe('Cleanup > ', function () {
+                it('Detaches events upon destroy', function () {
+                    var inj = init(),
+                        $el = mouseDirective(inj, {
+                            pdfUrl: 'mockUrl'
+                        }),
+                        event = _.extend(angular.element.Event('wheel'), {
+                            wheelDelta: 100
+                        });
+
+                    inj.$scope.$broadcast('$destroy');
+                    
+                    $el.find('div').trigger(event);
+
+                    expect(inj.pdfjs.page.render.calls.count()).not.toBeGreaterThan(1);
+                });
+            });
+        });
     });
+
 }());
