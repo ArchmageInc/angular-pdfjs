@@ -1,4 +1,4 @@
-# angular-pdfjs *(v0.0.3)*
+# angular-pdfjs *(v0.0.6)*
 
 This project was started because of the lack of control available by other existing PDFJS directive wrappers. It was designed to be light-weight yet fully functional. 
 The directive allows multiple custom controls to **Rotate**, **Pan**, **Zoom**, **Page**, and **Change PDF** without polluting the scope or requiring a service injection.
@@ -181,6 +181,3 @@ myApp.directive('myDirective', function () {
 While this directive is very small, feedback and suggestions are always welcome. 
 Not that I will be able to get around to them, so feel free to submit a pull request, or fork me for all I care.
 
-
-*p.s*:
-Unit tests are coming, I promise.
