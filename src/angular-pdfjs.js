@@ -17,6 +17,9 @@
                     canvasContext,
                     currentPage,
                     pdfDocument,
+                    loadTask,
+                    renderTask,
+                    pageTask,
                     loading,
                     zoomSpeed    = 0.25,
                     panSpeed     = 10,
@@ -31,7 +34,15 @@
                     defer        = $q.defer(),
                     emptyPromise = defer.promise;
 
+                function clearLoading() {
+                    loadTask = null;
+                    pageTask = null;
+                    renderTask = null;
+                    loading = null;
+                }
+
                 function clearState() {
+                    clearLoading();
                     angular.extend(cState, {
                         page:     0,
                         rotation: 0,
@@ -43,12 +54,11 @@
                     });
                     angular.extend(fState, cState, {page: 1});
                     angular.extend(vState, fState);
-                    loading         = null;
                     oState.viewport = null;
                 }
                 
                 function resetState() {
-                    loading = null;
+                    clearLoading();
                     angular.extend(cState, fState);
                     angular.extend(vState, cState);
                     $scope.$applyAsync();
@@ -75,28 +85,87 @@
                     fState.height = fState.height || oState.height;
                 }
 
-                function renderPage() {
-                    if (okToRender()) {
-                        loading = pdfDocument.getPage(fState.page).then(function (_page) {
-                            var viewBox,
-                                viewport;
-
-                            oStateInitialize(_page.getViewport(1));
-
-                            currentPage = _page;
-                            viewBox     = [0, 0, oState.width, oState.height];
-                            viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
-
-                            setContainerSize();
-
-                            loading = _page.render({
-                                canvasContext: canvasContext,
-                                viewport: viewport
-                            }).then(resetState);
+                function loadPdf(url) {
+                    if (url) {
+                        loading = $q(function (resolve, reject) {
+                            loadTask = PDFJS.getDocument(url);
+                            loadTask.then(function (_document) {
+                                clearState();
+                                pdfDocument = _document;
+                                pageCount   = pdfDocument.numPages;
+                                loading = null;
+                                resolve(_document);
+                            }, function (error) {
+                                clearState();
+                                reject(error);
+                            });
                         });
+                        loading._loadState = 'document';
                         return loading;
                     }
                     return emptyPromise;
+                }
+
+                function loadPage(_document) {
+                    if (_document && okToRender()) {
+                        loading = $q(function (resolve, reject) {
+                            pageTask = _document.getPage(fState.page);
+                            pageTask.then(function (_page) {
+                                clearLoading();
+                                resolve(_page);
+                            }, reject);
+                        });
+                        loading._loadState = 'page';
+                        return loading;
+                    }
+                    return emptyPromise;
+                }
+
+                function renderPage(_page) {
+                    if (_page && okToRender()) {
+                        var viewBox,
+                            viewport;
+
+                        oStateInitialize(_page.getViewport(1));
+
+                        currentPage = _page;
+                        viewBox     = [0, 0, oState.width, oState.height];
+                        viewport    = new PDFJS.PageViewport(viewBox, fState.scale, fState.rotation, fState.offsetX, fState.offsetY);
+
+                        setContainerSize();
+                        loading = $q(function (resolve, reject) {
+                            renderTask = _page.render({
+                                canvasContext: canvasContext,
+                                viewport: viewport
+                            }).then(function () {
+                                resetState();
+                                resolve();
+                            }, reject);
+                        });
+                        loading._loadState = 'render';
+                        return loading;
+                    }
+                    return emptyPromise;
+                }
+
+                function loadDocument(url) {
+                    return loadPdf(url)
+                        .then(loadPage)
+                        .then(renderPage)
+                        .finally(clearLoading);
+                }
+
+                function cancelLoad() {
+                    if (loadTask) {
+                        return $q.when(loadTask.destroy()).then(clearState);
+                    }
+                    return emptyPromise;
+                }
+
+                function updateRender() {
+                    return loadPage(pdfDocument)
+                        .then(renderPage)
+                        .finally(clearLoading);
                 }
 
                 function setContainerSize() {
@@ -124,7 +193,7 @@
                     pageNumber  = parseInt(pageNumber);
                     if (!isNaN(pageNumber)) {
                         fState.page = pageNumber;
-                        return renderPage();
+                        return updateRender();
                     }
                     return emptyPromise;
                 }
@@ -134,7 +203,7 @@
                     width        = parseFloat(width);
                     if (!isNaN(width) && width > 0) {
                         fState.width = width;
-                        return renderPage();
+                        return updateRender();
                     }
                     return emptyPromise;
                 }
@@ -143,7 +212,7 @@
                     height        = parseFloat(height);
                     if (!isNaN(height) && height > 0) {
                         fState.height = height;
-                        return renderPage();
+                        return updateRender();
                     }
                     return emptyPromise;
                 }
@@ -161,7 +230,7 @@
                     scale        = parseFloat(scale);
                     if (!isNaN(scale) && scale > 0) {
                         fState.scale = scale;
-                        return renderPage();
+                        return updateRender();
                     }
                     return emptyPromise;
                 }
@@ -201,7 +270,7 @@
                     if (!isNaN(x) && !isNaN(y)) {
                         fState.offsetX = x;
                         fState.offsetY = y;
-                        return renderPage();
+                        return updateRender();
                     }
                     return emptyPromise;
                 }
@@ -235,20 +304,7 @@
                     rotation        = parseFloat(rotation);
                     if (!isNaN(rotation)) {
                         fState.rotation = Math.round(rotation / 90) * 90;
-                        return renderPage();
-                    }
-                    return emptyPromise;
-                }
-
-                function loadDocument(url) {
-                    if (url) {
-                        loading = PDFJS.getDocument(url).then(function (_pdfDocument) {
-                            clearState();
-                            pdfDocument = _pdfDocument;
-                            pageCount   = pdfDocument.numPages;
-                            return renderPage();
-                        });
-                        return loading;
+                        return updateRender();
                     }
                     return emptyPromise;
                 }
@@ -333,6 +389,9 @@
 
                     loadDocument: {
                         value: loadDocument
+                    },
+                    cancelLoad: {
+                        value: cancelLoad
                     },
                     setElements: {
                         value: setElements
