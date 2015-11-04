@@ -163,8 +163,7 @@
                 }
 
                 function updateRender() {
-                    return loadPage(pdfDocument)
-                        .then(renderPage)
+                    return renderPage(currentPage)
                         .finally(clearLoading);
                 }
 
