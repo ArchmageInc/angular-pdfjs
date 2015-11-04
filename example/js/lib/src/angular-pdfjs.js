@@ -34,15 +34,17 @@
                     defer        = $q.defer(),
                     emptyPromise = defer.promise;
 
-                function clearLoading() {
-                    loadTask = null;
-                    pageTask = null;
-                    renderTask = null;
-                    loading = null;
+                function clearLoading(doit) {
+                    if (doit) {
+                        loadTask = null;
+                        pageTask = null;
+                        renderTask = null;
+                        loading = null;
+                    }
                 }
 
                 function clearState() {
-                    clearLoading();
+                    clearLoading(true);
                     angular.extend(cState, {
                         page:     0,
                         rotation: 0,
@@ -58,7 +60,7 @@
                 }
                 
                 function resetState() {
-                    clearLoading();
+                    clearLoading(true);
                     angular.extend(cState, fState);
                     angular.extend(vState, cState);
                     $scope.$applyAsync();
@@ -111,7 +113,7 @@
                         loading = $q(function (resolve, reject) {
                             pageTask = _document.getPage(fState.page);
                             pageTask.then(function (_page) {
-                                clearLoading();
+                                clearLoading(true);
                                 resolve(_page);
                             }, reject);
                         });
@@ -139,7 +141,7 @@
                                 viewport: viewport
                             }).then(function () {
                                 resetState();
-                                resolve();
+                                resolve(true);
                             }, reject);
                         });
                         loading._loadState = 'render';
@@ -152,7 +154,11 @@
                     return loadPdf(url)
                         .then(loadPage)
                         .then(renderPage)
-                        .finally(clearLoading);
+                        .finally(clearLoading)
+                        .catch(function (error) {
+                            clearLoading(true);
+                            return $q.reject(error);
+                        });
                 }
 
                 function cancelLoad() {
@@ -165,7 +171,11 @@
                 function updateRender() {
                     return loadPage(pdfDocument)
                         .then(renderPage)
-                        .finally(clearLoading);
+                        .finally(clearLoading)
+                        .catch(function (error) {
+                            clearLoading(true);
+                            return $q.reject(error);
+                        });
                 }
 
                 function setContainerSize() {
