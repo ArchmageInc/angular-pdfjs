@@ -9,9 +9,7 @@ cache:
 install:
   - npm config set spin false
   - npm install -g gulp bower
-  - npm install
 before_script:
-  
-  - bower install
+  - npm install
 script:
   - gulp test:js

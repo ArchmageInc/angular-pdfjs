@@ -1,4 +1,4 @@
-# angular-pdfjs *(v0.0.6)*
+# angular-pdfjs *(v0.0.6)* [![Build Status](https://travis-ci.org/ArchmageInc/angular-pdfjs.svg?branch=master)](https://travis-ci.org/ArchmageInc/angular-pdfjs)
 
 This project was started because of the lack of control available by other existing PDFJS directive wrappers. It was designed to be light-weight yet fully functional. 
 The directive allows multiple custom controls to **Rotate**, **Pan**, **Zoom**, **Page**, and **Change PDF** without polluting the scope or requiring a service injection.
